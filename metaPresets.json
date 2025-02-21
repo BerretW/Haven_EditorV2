@@ -1,0 +1,36 @@
+{
+    "food": {
+        "eat": true,
+        "thirst": true,
+        "effect": {
+            "hunger": 10,
+            "water": 10,
+            "stamina": 0,
+            "shooting": 0,
+            "riding": 0,
+            "fishing": 0,
+            "alcohol": 0,
+            "timestampAlcohol": 1000,
+            "timestampShooting": 1000,
+            "timestampRiding": 1000,
+            "timestampStamina": 1100,
+            "timestampFishing": 1100
+        },
+        "prop": "prop_name",
+        "anim": "animation",
+        "animDic": "adresses_animation",
+        "item": "spawn_name",
+        "mliter": 100,
+        "grams": 10,
+        "uses": 3,
+        "maxGrams": 1000,
+        "maxMliters": 1000
+    },
+    "item": {
+        "description": "Odolnost 100",
+        "Durability": 100
+    },
+    "prop": {
+        "model": "p_lampwall13x"
+    }
+}

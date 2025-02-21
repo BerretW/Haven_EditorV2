@@ -1,0 +1,29 @@
+/* Globální styl pro dialogy */
+QDialog {
+    background-color: #f7f9fc;
+    font-family: Arial;
+    font-size: 12pt;
+}
+
+/* Styl pro labely */
+QLabel {
+    font-weight: bold;
+}
+
+/* Styl pro vstupní pole */
+QLineEdit, QTableWidget {
+    background-color: #ffffff;
+    border: 1px solid #c0c0c0;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+
+
+/* Styl tabulky */
+QTableWidget {
+    border: 1px solid #c0c0c0;
+    gridline-color: #dcdcdc;
+    selection-background-color: #0078d7;
+    selection-color: #ffffff;
+}

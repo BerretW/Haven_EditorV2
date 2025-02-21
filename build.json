@@ -1,0 +1,85 @@
+{
+ "version": "auto-py-to-exe-configuration_v1",
+ "pyinstallerOptions": [
+  {
+   "optionDest": "noconfirm",
+   "value": true
+  },
+  {
+   "optionDest": "filenames",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/editor.py"
+  },
+  {
+   "optionDest": "onefile",
+   "value": true
+  },
+  {
+   "optionDest": "console",
+   "value": true
+  },
+  {
+   "optionDest": "icon_file",
+   "value": "C:/Users/adolf/Desktop/GIT/haven_editor/icon.ico"
+  },
+  {
+   "optionDest": "clean_build",
+   "value": false
+  },
+  {
+   "optionDest": "strip",
+   "value": false
+  },
+  {
+   "optionDest": "noupx",
+   "value": false
+  },
+  {
+   "optionDest": "disable_windowed_traceback",
+   "value": false
+  },
+  {
+   "optionDest": "uac_admin",
+   "value": false
+  },
+  {
+   "optionDest": "uac_uiaccess",
+   "value": false
+  },
+  {
+   "optionDest": "argv_emulation",
+   "value": false
+  },
+  {
+   "optionDest": "bootloader_ignore_signals",
+   "value": false
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/config.json;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/metaPresets.json;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/weapons.json;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/icon.ico;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/stylesheet.qss;."
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/adolf/GITHub/Haven_EditorV2/assets;assets/"
+  }
+ ],
+ "nonPyinstallerOptions": {
+  "increaseRecursionLimit": true,
+  "manualArguments": ""
+ }
+}
