@@ -172,4 +172,7 @@ cython_debug/
 .vscode/
 cache/
 config.json
+configmain.json
 /output
+/PDFs
+/item_images

@@ -22,6 +22,7 @@ from hunting_animal_manager import HuntingAnimalManager
 from herbs_manager import HerbsManagerDialog
 from plants_manager import PlantTypesManagerDialog
 from treasure_manager import TreasureManagerDialog
+from ranch_manager import RanchAnimalManager
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(BASE_DIR, 'config.json')
@@ -248,6 +249,13 @@ class RecipeManager(QtWidgets.QMainWindow):
         manage_plants_action.triggered.connect(self.play_click_sound)
         manage_plants_action.triggered.connect(self.manage_plants)
         toolbar.addAction(manage_plants_action)
+
+
+        manage_ranch_animals_action = QtWidgets.QAction("Zvířata (Ranch)", self)
+        manage_ranch_animals_action.triggered.connect(self.play_click_sound)
+        manage_ranch_animals_action.triggered.connect(self.manage_ranch_animals)
+        toolbar.addAction(manage_ranch_animals_action)
+
 
         manage_treasures_action = QtWidgets.QAction("Poklady", self)
         manage_treasures_action.triggered.connect(self.play_click_sound)
@@ -548,6 +556,11 @@ class RecipeManager(QtWidgets.QMainWindow):
 
     def manage_plants(self):
         dialog = PlantTypesManagerDialog(self.connection)
+        dialog.exec_()
+
+
+    def manage_ranch_animals(self):
+        dialog = RanchAnimalManager(self.connection)
         dialog.exec_()
 
     def manage_treasures(self):
