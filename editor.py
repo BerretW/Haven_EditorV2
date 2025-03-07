@@ -42,7 +42,7 @@ class RecipeManager(QtWidgets.QMainWindow):
         super().__init__()
         self.load_config()
         self.setWindowTitle(f"Správa Receptů - {self.config['version']}")
-        self.setGeometry(100, 100, 1800, 700)  # Rozšířená šířka pro nové sloupce
+        self.setGeometry(100, 100, 1800, 700)
         self.load_stylesheet(os.path.join(BASE_DIR, "stylesheet.qss"))
 
         self.connection = self.create_db_connection()
@@ -54,8 +54,10 @@ class RecipeManager(QtWidgets.QMainWindow):
         self.selected_category_id = None
         self.click_sound = QMediaPlayer()
 
-        # V této cache budeme držet namapované skill -> label
+        # Cache pro skill labely
         self.skill_cache = {}
+        # Cache pro item labely (materiálů)
+        self.item_label_cache = {}
 
         self.all_recipes = []  # seznam všech receptů z DB
 
@@ -141,12 +143,13 @@ class RecipeManager(QtWidgets.QMainWindow):
         left_layout.addLayout(search_layout)
 
         # Tabulka receptů
+        # Zvedáme počet sloupců na 13, přidáváme sloupec "Materiály"
         self.table = QtWidgets.QTableWidget()
-        self.table.setColumnCount(12)
+        self.table.setColumnCount(13)
         self.table.setHorizontalHeaderLabels([
             'Obrázek', 'ID', 'Item (Label)', 'Food', 'Housing',
             'Skill', 'XP', 'Název', 'Typ', 'Kategorie',
-            'Prop', 'Akce'
+            'Prop', 'Materiály', 'Akce'
         ])
         self.table.cellDoubleClicked.connect(self.play_click_sound)
         self.table.cellDoubleClicked.connect(self.on_table_double_clicked)
@@ -250,12 +253,10 @@ class RecipeManager(QtWidgets.QMainWindow):
         manage_plants_action.triggered.connect(self.manage_plants)
         toolbar.addAction(manage_plants_action)
 
-
         manage_ranch_animals_action = QtWidgets.QAction("Zvířata (Ranch)", self)
         manage_ranch_animals_action.triggered.connect(self.play_click_sound)
         manage_ranch_animals_action.triggered.connect(self.manage_ranch_animals)
         toolbar.addAction(manage_ranch_animals_action)
-
 
         manage_treasures_action = QtWidgets.QAction("Poklady", self)
         manage_treasures_action.triggered.connect(self.play_click_sound)
@@ -265,9 +266,7 @@ class RecipeManager(QtWidgets.QMainWindow):
         self.load_all_recipes()
 
     def load_all_recipes(self):
-        """Načte všechny recepty z DB a uloží je do self.all_recipes.
-           Zároveň nacachuje skill -> label, aby se nemuselo volat DB pro každý řádek.
-        """
+        """Načte všechny recepty, naparsuje materials a vytvoří cache pro skill a item labely."""
         cursor = self.connection.cursor(dictionary=True)
 
         query = """
@@ -276,6 +275,7 @@ class RecipeManager(QtWidgets.QMainWindow):
                 r.name,
                 r.type,
                 r.prop,
+                r.materials,
                 rc.name AS category_name,
                 r.result,
                 r.skill,
@@ -293,7 +293,7 @@ class RecipeManager(QtWidgets.QMainWindow):
         cursor.execute(query)
         self.all_recipes = cursor.fetchall()
 
-        # Zde posbíráme všechna jména skillů a v jednom dotazu je načteme z tabulky skills
+        # CACHE pro SKILLY
         all_skills = {r['skill'] for r in self.all_recipes if r.get('skill')}
         self.skill_cache.clear()
         if all_skills:
@@ -303,6 +303,43 @@ class RecipeManager(QtWidgets.QMainWindow):
             result_skills = cursor.fetchall()
             for row in result_skills:
                 self.skill_cache[row['name']] = row['label']
+
+        # CACHE pro ITEMS (materiálů)
+        all_material_codes = set()
+        for r in self.all_recipes:
+            mats_json = r.get('materials') or '{}'
+            try:
+                mat_dict = json.loads(mats_json)
+                for mat_code in mat_dict.keys():
+                    all_material_codes.add(mat_code)
+            except:
+                pass
+
+        self.item_label_cache.clear()
+        if all_material_codes:
+            placeholder = ", ".join(["%s"] * len(all_material_codes))
+            query_items = f"SELECT item, label FROM items WHERE item IN ({placeholder})"
+            cursor.execute(query_items, tuple(all_material_codes))
+            result_items = cursor.fetchall()
+            for row in result_items:
+                self.item_label_cache[row['item']] = row['label']
+
+        # Naparsování materials do řetězce s labely
+        for r in self.all_recipes:
+            materials = r.get('materials') or '{}'
+            try:
+                mat_dict = json.loads(materials)
+                materials_str_parts = []
+                for k, v in mat_dict.items():
+                    label = self.item_label_cache.get(k, "")
+                    if label:
+                        materials_str_parts.append(f"{k} ({label}): {v}")
+                    else:
+                        materials_str_parts.append(f"{k}: {v}")
+                materials_str = ", ".join(materials_str_parts)
+            except:
+                materials_str = ""
+            r['materials_str'] = materials_str
 
         self.load_categories()
         self.populate_type_combobox()
@@ -364,7 +401,7 @@ class RecipeManager(QtWidgets.QMainWindow):
     def apply_filters(self):
         filtered = self.all_recipes
 
-        # 1) Filtr kategorie
+        # Filtr podle kategorie
         if self.selected_category_id is not None:
             sel_cat_name = None
             for i in range(self.categories_list.count()):
@@ -374,39 +411,34 @@ class RecipeManager(QtWidgets.QMainWindow):
                     sel_cat_name = cat_item.text()
                     break
             if sel_cat_name and sel_cat_name != "Všechny kategorie":
-                filtered = [
-                    r for r in filtered
-                    if r.get('category_name') and r['category_name'] == sel_cat_name
-                ]
+                filtered = [r for r in filtered if r.get('category_name') and r['category_name'] == sel_cat_name]
 
-        # 2) Filtr vyhledávání
+        # Filtr vyhledávání (name, item_code, label, skill, XP a materiály)
         search_text = self.search_edit.text().strip().lower()
         if search_text:
             def matches_search(r):
-                name = r['name'].lower() if r['name'] else ""
+                name = (r['name'] or "").lower()
                 item_code = (r['item_code'] or "").lower()
                 label = (r['label'] or "").lower()
-                # Skill label (nebo fallback)
                 skill_label = self.skill_cache.get(r['skill'], r['skill']) or ""
-                skill_label = skill_label.lower()
                 xp = str(r['XP'])
-
+                materials_str = (r.get('materials_str', '')).lower()
                 return (
                     search_text in name or
                     search_text in item_code or
                     search_text in label or
-                    search_text in skill_label or
-                    search_text in xp
+                    search_text in skill_label.lower() or
+                    search_text in xp or
+                    search_text in materials_str
                 )
-
             filtered = [r for r in filtered if matches_search(r)]
 
-        # 3) Filtr typu
+        # Filtr podle typu
         selected_type = self.type_combobox.currentData()
         if selected_type:
             filtered = [r for r in filtered if r['type'] == selected_type]
 
-        # 4) Filtr prop
+        # Filtr podle prop
         selected_prop = self.prop_combobox.currentData()
         if selected_prop:
             filtered = [r for r in filtered if r['prop'] == selected_prop]
@@ -492,26 +524,35 @@ class RecipeManager(QtWidgets.QMainWindow):
             prop_item.setFlags(prop_item.flags() & ~QtCore.Qt.ItemIsEditable)
             self.table.setItem(row_number, 10, prop_item)
 
-            # Tlačítka
-            action_widget = self.create_action_buttons(recipe['id'])
-            self.table.setCellWidget(row_number, 11, action_widget)
+            # Materiály
+            materials_str = recipe.get('materials_str', "")
+            materials_item = QtWidgets.QTableWidgetItem(materials_str)
+            materials_item.setFlags(materials_item.flags() & ~QtCore.Qt.ItemIsEditable)
+            font = materials_item.font()
+            font.setPointSize(8)
+            materials_item.setFont(font)
+            self.table.setItem(row_number, 11, materials_item)
 
-            # Výška řádku
+            # Akce
+            action_widget = self.create_action_buttons(recipe['id'])
+            self.table.setCellWidget(row_number, 12, action_widget)
+
             self.table.setRowHeight(row_number, 98)
 
-        # Nastavení šířek sloupců (lze zavolat jen jednou)
-        self.table.setColumnWidth(0, 100)   # Obrázek
+        # Nastavení šířek sloupců
+        self.table.setColumnWidth(0, 70)   # Obrázek
         self.table.setColumnWidth(1, 30)    # ID
         self.table.setColumnWidth(2, 150)   # Item (Label)
-        self.table.setColumnWidth(3, 50)    # Food
+        self.table.setColumnWidth(3, 30)    # Food
         self.table.setColumnWidth(4, 60)    # Housing
-        self.table.setColumnWidth(5, 70)   # Skill
-        self.table.setColumnWidth(6, 50)    # XP
+        self.table.setColumnWidth(5, 70)    # Skill
+        self.table.setColumnWidth(6, 30)    # XP
         self.table.setColumnWidth(7, 150)   # Název
         self.table.setColumnWidth(8, 100)   # Typ
-        self.table.setColumnWidth(9, 100)   # Kategorie
+        self.table.setColumnWidth(9, 70)   # Kategorie
         self.table.setColumnWidth(10, 100)  # Prop
-        self.table.setColumnWidth(11, 300)  # Akce
+        self.table.setColumnWidth(11, 100)  # Materiály
+        self.table.setColumnWidth(12, 300)  # Akce
 
     def manage_books(self):
         dialog = BookManager(self.connection)
@@ -557,7 +598,6 @@ class RecipeManager(QtWidgets.QMainWindow):
     def manage_plants(self):
         dialog = PlantTypesManagerDialog(self.connection)
         dialog.exec_()
-
 
     def manage_ranch_animals(self):
         dialog = RanchAnimalManager(self.connection)
@@ -641,7 +681,7 @@ class RecipeManager(QtWidgets.QMainWindow):
             return
 
         row = index.row()
-        recipe_id_item = self.table.item(row, 1)  # Sloupec s ID receptu
+        recipe_id_item = self.table.item(row, 1)
         if recipe_id_item:
             recipe_id = int(recipe_id_item.text())
         else:
